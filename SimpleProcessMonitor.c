@@ -3,56 +3,55 @@
 // The processes are accessed via the /proc filesystem.
 // The program monitors the resources used by each process (CPU usage / Memory usage).
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <signal.h>
-#include <string.h>
-#include <dirent.h>
-#include <ctype.h>
-#include <time.h>
-#include <pwd.h>
-#include <grp.h>
+#include "SimpleProcessMonitor.h"
 
-/* DA FARE:
-    1) Rimuovere processi doppioni dalla lista
-*/
-
-int refreshInterval = 3; // Refresh interval in seconds
-
-// flush input
-void flushInput()
+int main(int argc, char *argv[])
 {
-    fseek(stdin, 0, SEEK_END);
-    fflush(stdin);
-}
+    // if arguments array is not empty
+    if (argc > 1)
+    {
+        // if arguments are "interval" and "time", set refreshInterval to "time"
+        if (argc == 3 && strcmp(argv[1], "interval") == 0)
+        {
+            refreshInterval = atoi(argv[2]);
+        }
+        // if arguments are "terminate" and "pid", terminate process with pid
+        else if (argc == 3 && strcmp(argv[1], "terminate") == 0)
+        {
+            kill(atoi(argv[2]), SIGTERM);
+            exit(0);
+        }
+        // if arguments are "kill" and "pid", kill process with pid
+        else if (argc == 3 && strcmp(argv[1], "kill") == 0)
+        {
+            kill(atoi(argv[2]), SIGKILL);
+            exit(0);
+        }
+        // if arguments are "suspend" and "pid", suspend process with pid
+        else if (argc == 3 && strcmp(argv[1], "suspend") == 0)
+        {
+            kill(atoi(argv[2]), SIGSTOP);
+            exit(0);
+        }
+        // if arguments are "resume" and "pid", resume process with pid
+        else if (argc == 3 && strcmp(argv[1], "resume") == 0)
+        {
+            kill(atoi(argv[2]), SIGCONT);
+            exit(0);
+        }
+        // if arguments are something else, print usage
+        else
+        {
+            printf("Usage: ./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]\n");
+            exit(0);
+        }
+    }
 
-// clear and exit
-void clearAndExit()
-{
-    system("clear");
-    exit(0);
-}
-
-int execute;
-void trap1(int signal)
-{
-    execute = 0;
-}
-
-void trap2(int signal)
-{
-    clearAndExit();
-}
-
-int main()
-{
 start:
+    // Ctrl+C start
     signal(SIGINT, &trap1);
 
+    // execute flag used for Ctrl+C start handler
     execute = 1;
 
     while (execute)
@@ -65,10 +64,10 @@ start:
 
         printf("Process Monitor by Giovanni Magliocchetti\n\n");
 
-        FILE *fp;
-
         // print reset
         printf("\033[0m");
+
+        FILE *fp;
 
         // print CPU info (manufacturer, model, speed, cores)
         // print only once
@@ -256,8 +255,10 @@ start:
         {
             while ((ent = readdir(dir)) != NULL)
             {
+                // checks for a number in the subfolder name
                 if (isdigit(ent->d_name[0]))
                 {
+                    // if process is running, set element at index <pid> to 1
                     pids[atoi(ent->d_name)] = 1;
                     // printf("%s\n", ent->d_name);
                 }
@@ -266,13 +267,20 @@ start:
         }
         else
         {
-            printf("Error: Could not open /proc\n");
+            // print red
+            printf("\033[1;31m");
+
+            // print error message if /proc could not be opened
+            printf("Error: Could not open /proc! Exiting...\n");
+
+            // exit with code 1
             return 1;
         }
 
         // print all processes
         for (int i = 0; i < max_processes; i++)
         {
+            // check if pid should be printed (also works as a duplicate check, kinda...)
             if (pids[i] == 1)
             {
                 char filename[1000];
@@ -322,12 +330,12 @@ start:
                     fclose(fp);
                 }
                 // cpu usage in percent
-                double cpu_usage = (utime / sysconf(_SC_CLK_TCK) + stime / sysconf(_SC_CLK_TCK)) / (uptime - starttime / sysconf(_SC_CLK_TCK)) * 100;
+                double cpu_usage = (utime / CLOCK_TICKS_PER_SECOND + stime / CLOCK_TICKS_PER_SECOND) / (uptime - starttime / CLOCK_TICKS_PER_SECOND) * 100;
 
                 // ========== %MEM ==========
 
                 // rss in kB
-                long unsigned int rss_kB = rss * getpagesize() / 1024;
+                long unsigned int rss_kB = rss * PAGE_SIZE / 1024;
                 // get memory usage in percent
                 double memory_usage = (double)rss_kB / (double)total_memory * 100;
 
@@ -336,7 +344,7 @@ start:
                 // total cpu time used by the process since it started
                 double total_cpu_time = utime + stime;
                 // total cpu time used by the process since it started in seconds
-                double total_cpu_time_sec = total_cpu_time / sysconf(_SC_CLK_TCK);
+                double total_cpu_time_sec = total_cpu_time / CLOCK_TICKS_PER_SECOND;
 
                 // total cpu time in MM:SS:ms format
                 int total_cpu_time_h = (int)total_cpu_time_sec / 3600;
@@ -406,6 +414,8 @@ start:
                     strcpy(group_name, gr->gr_name);
                 }
 
+                // ========== VIRT ==========
+
                 // get VIRT
                 long unsigned int virt = 0;
                 fp = fopen(status_str, "r");
@@ -422,6 +432,8 @@ start:
                     }
                     fclose(fp);
                 }
+
+                // ========== RES ==========
 
                 // get RES
                 long unsigned int res = 0;
@@ -440,6 +452,8 @@ start:
                     fclose(fp);
                 }
 
+                // ========== SHR ==========
+
                 // get SHR
                 long unsigned int shr = 0;
                 fp = fopen(status_str, "r");
@@ -457,21 +471,25 @@ start:
                     fclose(fp);
                 }
 
+                // print process info
                 printf("%d\t%d\t%s\t%s\t%ld\t%ld\t%d\t%.2f\t%.2f\t%s\t%ld\t\t%ld\t\t%ld\t\t%s\n", pid, ppid, user_name, group_name, priority, nice, state, cpu_usage, memory_usage, total_cpu_time_str, virt / 100, res / 100, shr / 100, command);
 
                 pids[i] = 0;
             }
         }
+
         sleep(refreshInterval);
     }
 
     // print yellow
     printf("\033[1;93m");
 
+    // ask for command
     printf("\n\nEnter command: ");
 
 input:
 
+    // Ctrl+C input
     signal(SIGINT, &trap2);
 
     // print reset
@@ -479,13 +497,13 @@ input:
 
     char command[1000];
 
-    // get command (accepts spaces)
+    // get command (accepts spaces and long commands)
     fgets(command, 1000, stdin);
 
-    // strip newline
+    // strip newline (must be done after fgets)
     command[strcspn(command, "\n")] = 0;
 
-    // if user writes "terminate <pid>", terminate process with pid <pid>
+    // if user writes "terminate", terminate process with pid
     if (strcmp(command, "terminate") == 0)
     {
     inputTerminate:
@@ -521,7 +539,7 @@ input:
 
         goto start;
     }
-    // if user writes "kill <pid>", kill process with pid <pid>
+    // if user writes "kill", kill process with pid
     else if (strcmp(command, "kill") == 0)
     {
     inputKill:
@@ -557,7 +575,7 @@ input:
 
         goto start;
     }
-    // if user writes "suspend <pid>", suspend process with pid <pid>
+    // if user writes "suspend", suspend process with pid
     else if (strcmp(command, "suspend") == 0)
     {
     inputSuspend:
@@ -593,7 +611,7 @@ input:
 
         goto start;
     }
-    // if user writes "resume <pid>", resume process with pid <pid>
+    // if user writes "resume", resume process with pid
     else if (strcmp(command, "resume") == 0)
     {
     inputResume:
@@ -629,7 +647,7 @@ input:
 
         goto start;
     }
-    // if user writes "interval <seconds>", set refresh interval to <seconds>
+    // if user writes "interval", set refresh interval to
     else if (strcmp(command, "interval") == 0)
     {
     inputInterval:
@@ -660,10 +678,16 @@ input:
             }
         }
 
-        // if interval is 0, set interval to 1
+        // if interval is "default", set interval to DEFAULT_INTERVAL
+        if (strcmp(interval, "default") == 0)
+        {
+            refreshInterval = DEFAULT_INTERVAL;
+        }
+
+        // if interval is 0, set interval to MINIMUM_INTERVAL
         if (atoi(interval) == 0)
         {
-            refreshInterval = 1;
+            refreshInterval = MINIMUM_INTERVAL;
         }
         else
         {
@@ -706,6 +730,7 @@ input:
         // print yellow
         printf("\033[1;93m");
 
+        // ask for command (fixes bug where this else condition popped up after user terminated/killed/suspended/resumed process)
         printf("\n\nEnter command: ");
 
         goto input;
