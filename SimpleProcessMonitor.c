@@ -1,4 +1,4 @@
-// Simple Process Monitor (by Giovanni Magliocchetti)
+// SimpleProcessMonitor by Giovanni Magliocchetti
 // Allows to terminate, kill, suspend and resume running processes.
 // The processes are accessed via the /proc filesystem.
 // The program monitors the resources used by each process (CPU usage / Memory usage).
@@ -62,7 +62,7 @@ start:
         // print green
         printf("\033[1;92m");
 
-        printf("Process Monitor by Giovanni Magliocchetti\n\n");
+        printf("SimpleProcessMonitor by Giovanni Magliocchetti\n\n");
 
         // print reset
         printf("\033[0m");
@@ -724,7 +724,7 @@ input:
         printf("interval\t\t- Change monitoring refresh interval\n");
         printf("\t\t\t  Measured in seconds, only integers allowed\n");
         printf("\t\t\t  Default is 3 seconds, minimum is 1 second\n");
-        printf("help\t\t\t- Print help\n");
+        printf("help\t\t\t- Print help dialog\n");
         printf("exit | quit\t\t- Exit program");
 
         // print yellow
