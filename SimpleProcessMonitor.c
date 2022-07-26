@@ -248,6 +248,10 @@ start:
         // array of pids
         int pids[max_processes];
 
+        // variables needed to fix bug where the last process is duplicated at the end of the list
+        int processesToPrint = 0;
+        int processesPrinted = 0;
+
         // get all subfolders in /proc that start with a number and store them in an array
         DIR *dir;
         struct dirent *ent;
@@ -260,6 +264,7 @@ start:
                 {
                     // if process is running, set element at index <pid> to 1
                     pids[atoi(ent->d_name)] = 1;
+                    processesToPrint++;
                     // printf("%s\n", ent->d_name);
                 }
             }
@@ -281,7 +286,7 @@ start:
         for (int i = 0; i < max_processes; i++)
         {
             // check if pid should be printed (also works as a duplicate check, kinda...)
-            if (pids[i] == 1)
+            if (pids[i] == 1 && processesPrinted < processesToPrint)
             {
                 char filename[1000];
                 sprintf(filename, "/proc/%d/stat", i);
@@ -484,6 +489,9 @@ start:
                 // print reset
                 printf("\033[0m");
 
+                // variable needed to fix bug where the last process is duplicated at the end of the list
+                processesPrinted++;
+                // variable needed to fix bug where some processes duplicate exponentially
                 pids[i] = 0;
             }
         }
