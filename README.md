@@ -13,13 +13,13 @@
 </p>
 
 <h2 align="center">Usage</h2>
-Available commands outside the program (from the terminal):
+Outside the program (from the terminal):
 
 ```bash
-Usage: ./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]
+./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]
 ```
 
-Available commands inside the program:
+Inside the program:
 
 ```bash
 monitor | back          - Go back to monitoring processes
@@ -30,6 +30,8 @@ resume                  - Resume process with pid
 interval                - Change monitoring refresh interval
                           Measured in seconds, only integers allowed
                           Default is 3 seconds, minimum is 1 second
+highlight               - Highlight process with pid
+unhighlight             - Unhighlight currently highlighted process
 help                    - Print help dialog
 exit | quit             - Exit program
 ```

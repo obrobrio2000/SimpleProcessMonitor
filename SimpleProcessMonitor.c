@@ -471,8 +471,18 @@ start:
                     fclose(fp);
                 }
 
+                // if pid is the one to be highlighted, print it in yellow
+                if (pid == highlightedPID && highlightedPID != 0)
+                {
+                    // print yellow
+                    printf("\033[1;33m");
+                }
+
                 // print process info
                 printf("%d\t%d\t%s\t%s\t%ld\t%ld\t%d\t%.2f\t%.2f\t%s\t%ld\t\t%ld\t\t%ld\t\t%s\n", pid, ppid, user_name, group_name, priority, nice, state, cpu_usage, memory_usage, total_cpu_time_str, virt / 100, res / 100, shr / 100, command);
+
+                // print reset
+                printf("\033[0m");
 
                 pids[i] = 0;
             }
@@ -521,7 +531,7 @@ input:
         // iterate pid and check if it is a number or space or newline
         for (int i = 0; i < strlen(pid); i++)
         {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n')
+            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
             {
                 // print red
                 printf("\033[1;91m");
@@ -557,7 +567,7 @@ input:
         // iterate pid and check if it is a number or space or newline
         for (int i = 0; i < strlen(pid); i++)
         {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n')
+            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
             {
                 // print red
                 printf("\033[1;91m");
@@ -593,7 +603,7 @@ input:
         // iterate pid and check if it is a number or space or newline
         for (int i = 0; i < strlen(pid); i++)
         {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n')
+            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
             {
                 // print red
                 printf("\033[1;91m");
@@ -629,7 +639,7 @@ input:
         // iterate pid and check if it is a number or space or newline
         for (int i = 0; i < strlen(pid); i++)
         {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n')
+            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
             {
                 // print red
                 printf("\033[1;91m");
@@ -664,7 +674,7 @@ input:
 
         for (int i = 0; i < strlen(interval); i++)
         {
-            if (!isdigit(interval[i]) || interval[i] == ' ' || interval[i] == '\n')
+            if (!isdigit(interval[i]) && interval[i] != ' ' && interval[i] != '\n' && interval[i] != '\0')
             {
                 // print red
                 printf("\033[1;91m");
@@ -707,6 +717,50 @@ input:
     {
         goto start;
     }
+    // if users writes "highlight", highlight process with pid
+    else if (strcmp(command, "highlight") == 0)
+    {
+    inputHighlight:
+        // print yellow
+        printf("\033[1;93m");
+
+        printf("\nEnter PID: ");
+
+        // print reset
+        printf("\033[0m");
+
+        char pid[1000];
+        scanf("%s", pid);
+
+        // iterate pid and check if it is a number or space or newline
+        for (int i = 0; i < strlen(pid); i++)
+        {
+            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
+            {
+                // print red
+                printf("\033[1;91m");
+
+                printf("\nError: invalid PID!\n");
+
+                // print reset
+                printf("\033[0m");
+
+                goto inputHighlight;
+            }
+
+            // set pid to be highlighted
+            highlightedPID = atoi(pid);
+        }
+
+        goto start;
+    }
+    // if user writes "unhighlight", unhighlight process with pid
+    else if (strcmp(command, "unhighlight") == 0)
+    {
+        highlightedPID = 0;
+
+        goto start;
+    }
     // if user writes newline or space or ^C
     else if (command[0] == '\n' || command[0] == ' ' || command[0] == '\0')
     {
@@ -724,6 +778,8 @@ input:
         printf("interval\t\t- Change monitoring refresh interval\n");
         printf("\t\t\t  Measured in seconds, only integers allowed\n");
         printf("\t\t\t  Default is 3 seconds, minimum is 1 second\n");
+        printf("highlight\t\t- Highlight process with pid\n");
+        printf("unhighlight\t\t- Unhighlight currently highlighted process\n");
         printf("help\t\t\t- Print help dialog\n");
         printf("exit | quit\t\t- Exit program");
 
