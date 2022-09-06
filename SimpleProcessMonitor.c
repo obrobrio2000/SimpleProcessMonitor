@@ -5,53 +5,164 @@
 
 #include "SimpleProcessMonitor.h"
 
-int main(int argc, char *argv[])
+// Refresh interval in seconds
+int refreshInterval = DEFAULT_INTERVAL;
+
+// Highlighted PID
+int highlightedPID = 0;
+
+// Ctrl+C monitor handler
+int execute = 1;
+void trap1(int signal)
 {
-    // if arguments array is not empty
-    if (argc > 1)
+    execute = 0;
+}
+
+// Ctrl+C input handler
+void trap2(int signal)
+{
+    system("clear");
+    exit(0);
+}
+
+void inputHighlight()
+{
+    // print yellow
+    printf("\033[1;93m");
+
+    printf("\nEnter PID: ");
+
+    // print reset
+    printf("\033[0m");
+
+    char pid[1000];
+    scanf("%s", pid);
+
+    // iterate pid and check if it is a number or space or newline
+    for (int i = 0; i < strlen(pid); i++)
     {
-        // if arguments are "interval" and "time", set refreshInterval to "time"
-        if (argc == 3 && strcmp(argv[1], "interval") == 0)
+        if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
         {
-            refreshInterval = atoi(argv[2]);
+            // print red
+            printf("\033[1;91m");
+
+            printf("\nError: invalid PID!\n");
+
+            // print reset
+            printf("\033[0m");
+
+            inputHighlight();
         }
-        // if arguments are "terminate" and "pid", terminate process with pid
-        else if (argc == 3 && strcmp(argv[1], "terminate") == 0)
+
+        // set pid to be highlighted
+        highlightedPID = atoi(pid);
+    }
+}
+
+void inputInterval()
+{
+    // print yellow
+    printf("\033[1;93m");
+
+    printf("\nEnter refresh interval: ");
+
+    // print reset
+    printf("\033[0m");
+
+    char interval[1000];
+    scanf("%s", interval);
+
+    for (int i = 0; i < strlen(interval); i++)
+    {
+        if (!isdigit(interval[i]) && interval[i] != ' ' && interval[i] != '\n' && interval[i] != '\0')
         {
-            kill(atoi(argv[2]), SIGTERM);
-            exit(0);
-        }
-        // if arguments are "kill" and "pid", kill process with pid
-        else if (argc == 3 && strcmp(argv[1], "kill") == 0)
-        {
-            kill(atoi(argv[2]), SIGKILL);
-            exit(0);
-        }
-        // if arguments are "suspend" and "pid", suspend process with pid
-        else if (argc == 3 && strcmp(argv[1], "suspend") == 0)
-        {
-            kill(atoi(argv[2]), SIGSTOP);
-            exit(0);
-        }
-        // if arguments are "resume" and "pid", resume process with pid
-        else if (argc == 3 && strcmp(argv[1], "resume") == 0)
-        {
-            kill(atoi(argv[2]), SIGCONT);
-            exit(0);
-        }
-        // if arguments are something else, print usage
-        else
-        {
-            printf("Usage: ./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]\n");
-            exit(0);
+            // print red
+            printf("\033[1;91m");
+
+            printf("\nError: invalid interval!\n");
+
+            // print reset
+            printf("\033[0m");
+
+            inputInterval();
         }
     }
 
-start:
-    // Ctrl+C start
+    // if interval is "default", set interval to DEFAULT_INTERVAL
+    if (strcmp(interval, "default") == 0)
+    {
+        refreshInterval = DEFAULT_INTERVAL;
+    }
+
+    // if interval is 0, set interval to MINIMUM_INTERVAL
+    if (atoi(interval) == 0)
+    {
+        refreshInterval = MINIMUM_INTERVAL;
+    }
+    else
+    {
+        refreshInterval = atoi(interval);
+    }
+}
+
+void inputAction(int action)
+{
+    // print yellow
+    printf("\033[1;93m");
+
+    printf("\nEnter PID: ");
+
+    // print reset
+    printf("\033[0m");
+
+    char pid[1000];
+    scanf("%s", pid);
+
+    // iterate pid and check if it is a number or space or newline
+    for (int i = 0; i < strlen(pid); i++)
+    {
+        if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
+        {
+            // print red
+            printf("\033[1;91m");
+
+            printf("\nError: invalid PID!\n");
+
+            // print reset
+            printf("\033[0m");
+
+            inputAction(action);
+        }
+    }
+
+    // if int = 0, resume process
+    if (action == 0)
+    {
+        kill(atoi(pid), SIGCONT);
+    }
+    // else if int = 1, suspend process
+    else if (action == 1)
+    {
+        kill(atoi(pid), SIGSTOP);
+    }
+    // else if int = 2, kill process
+    else if (action == 2)
+    {
+        kill(atoi(pid), SIGKILL);
+    }
+    // else if int = 3, terminate process
+    else if (action == 3)
+    {
+        kill(atoi(pid), SIGTERM);
+    }
+}
+
+void monitor()
+{
+    // Ctrl+C monitor
     signal(SIGINT, &trap1);
 
-    // execute flag used for Ctrl+C start handler
+    // execute flag used for Ctrl+C monitor handler
     execute = 1;
 
     while (execute)
@@ -242,15 +353,11 @@ start:
         else
         {
             printf("Error: Could not open /proc/sys/kernel/pid_max\n");
-            return 1;
+            exit(1);
         }
 
-        // array of pids
-        int pids[max_processes];
-
-        // variables needed to fix bug where the last process is duplicated at the end of the list
-        int processesToPrint = 0;
-        int processesPrinted = 0;
+        // array of pids (with calloc)
+        int *pids = calloc(max_processes, sizeof(int));
 
         // get all subfolders in /proc that start with a number and store them in an array
         DIR *dir;
@@ -264,7 +371,6 @@ start:
                 {
                     // if process is running, set element at index <pid> to 1
                     pids[atoi(ent->d_name)] = 1;
-                    processesToPrint++;
                     // printf("%s\n", ent->d_name);
                 }
             }
@@ -279,14 +385,14 @@ start:
             printf("Error: Could not open /proc! Exiting...\n");
 
             // exit with code 1
-            return 1;
+            exit(1);
         }
 
         // print all processes
         for (int i = 0; i < max_processes; i++)
         {
             // check if pid should be printed (also works as a duplicate check, kinda...)
-            if (pids[i] == 1 && processesPrinted < processesToPrint)
+            if (pids[i] == 1)
             {
                 char filename[1000];
                 sprintf(filename, "/proc/%d/stat", i);
@@ -489,12 +595,12 @@ start:
                 // print reset
                 printf("\033[0m");
 
-                // variable needed to fix bug where the last process is duplicated at the end of the list
-                processesPrinted++;
                 // variable needed to fix bug where some processes duplicate exponentially
                 pids[i] = 0;
             }
         }
+
+        free(pids);
 
         sleep(refreshInterval);
     }
@@ -505,8 +611,11 @@ start:
     // ask for command
     printf("\n\nEnter command: ");
 
-input:
+    input();
+}
 
+void input()
+{
     // Ctrl+C input
     signal(SIGINT, &trap2);
 
@@ -524,195 +633,32 @@ input:
     // if user writes "terminate", terminate process with pid
     if (strcmp(command, "terminate") == 0)
     {
-    inputTerminate:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter PID: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char pid[1000];
-        scanf("%s", pid);
-
-        // iterate pid and check if it is a number or space or newline
-        for (int i = 0; i < strlen(pid); i++)
-        {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid PID!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputTerminate;
-            }
-        }
-
-        kill(atoi(pid), SIGTERM);
-
-        goto start;
+        inputAction(3);
+        monitor();
     }
     // if user writes "kill", kill process with pid
     else if (strcmp(command, "kill") == 0)
     {
-    inputKill:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter PID: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char pid[1000];
-        scanf("%s", pid);
-
-        // iterate pid and check if it is a number or space or newline
-        for (int i = 0; i < strlen(pid); i++)
-        {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid PID!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputKill;
-            }
-        }
-
-        kill(atoi(pid), SIGKILL);
-
-        goto start;
+        inputAction(2);
+        monitor();
     }
     // if user writes "suspend", suspend process with pid
     else if (strcmp(command, "suspend") == 0)
     {
-    inputSuspend:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter PID: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char pid[1000];
-        scanf("%s", pid);
-
-        // iterate pid and check if it is a number or space or newline
-        for (int i = 0; i < strlen(pid); i++)
-        {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid PID!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputSuspend;
-            }
-        }
-
-        kill(atoi(pid), SIGSTOP);
-
-        goto start;
+        inputAction(1);
+        monitor();
     }
     // if user writes "resume", resume process with pid
     else if (strcmp(command, "resume") == 0)
     {
-    inputResume:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter PID: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char pid[1000];
-        scanf("%s", pid);
-
-        // iterate pid and check if it is a number or space or newline
-        for (int i = 0; i < strlen(pid); i++)
-        {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid PID!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputResume;
-            }
-        }
-
-        kill(atoi(pid), SIGCONT);
-
-        goto start;
+        inputAction(0);
+        monitor();
     }
     // if user writes "interval", set refresh interval to
     else if (strcmp(command, "interval") == 0)
     {
-    inputInterval:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter refresh interval: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char interval[1000];
-        scanf("%s", interval);
-
-        for (int i = 0; i < strlen(interval); i++)
-        {
-            if (!isdigit(interval[i]) && interval[i] != ' ' && interval[i] != '\n' && interval[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid interval!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputInterval;
-            }
-        }
-
-        // if interval is "default", set interval to DEFAULT_INTERVAL
-        if (strcmp(interval, "default") == 0)
-        {
-            refreshInterval = DEFAULT_INTERVAL;
-        }
-
-        // if interval is 0, set interval to MINIMUM_INTERVAL
-        if (atoi(interval) == 0)
-        {
-            refreshInterval = MINIMUM_INTERVAL;
-        }
-        else
-        {
-            refreshInterval = atoi(interval);
-        }
-
-        goto start;
+        inputInterval();
+        monitor();
     }
     // if user writes "exit" or "quit", exit program
     else if (strcmp(command, "exit") == 0 || strcmp(command, "quit") == 0)
@@ -720,59 +666,27 @@ input:
         system("clear");
         exit(0);
     }
-    // if user writes "monitor" or "back", go back to start
+    // if user writes "monitor" or "back", go back to monitor
     else if (strcmp(command, "monitor") == 0 || strcmp(command, "back") == 0)
     {
-        goto start;
+        monitor();
     }
     // if users writes "highlight", highlight process with pid
     else if (strcmp(command, "highlight") == 0)
     {
-    inputHighlight:
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("\nEnter PID: ");
-
-        // print reset
-        printf("\033[0m");
-
-        char pid[1000];
-        scanf("%s", pid);
-
-        // iterate pid and check if it is a number or space or newline
-        for (int i = 0; i < strlen(pid); i++)
-        {
-            if (!isdigit(pid[i]) && pid[i] != ' ' && pid[i] != '\n' && pid[i] != '\0')
-            {
-                // print red
-                printf("\033[1;91m");
-
-                printf("\nError: invalid PID!\n");
-
-                // print reset
-                printf("\033[0m");
-
-                goto inputHighlight;
-            }
-
-            // set pid to be highlighted
-            highlightedPID = atoi(pid);
-        }
-
-        goto start;
+        inputHighlight();
+        monitor();
     }
     // if user writes "unhighlight", unhighlight process with pid
     else if (strcmp(command, "unhighlight") == 0)
     {
         highlightedPID = 0;
-
-        goto start;
+        monitor();
     }
     // if user writes newline or space or ^C
     else if (command[0] == '\n' || command[0] == ' ' || command[0] == '\0')
     {
-        goto input;
+        input();
     }
     // if user writes something else, print error message
     else
@@ -797,8 +711,51 @@ input:
         // ask for command (fixes bug where this else condition popped up after user terminated/killed/suspended/resumed process)
         printf("\n\nEnter command: ");
 
-        goto input;
+        input();
+    }
+}
+
+void main(int argc, char *argv[])
+{
+    // if arguments array is not empty
+    if (argc > 1)
+    {
+        // if arguments are "interval" and "time", set refreshInterval to "time"
+        if (argc == 3 && strcmp(argv[1], "interval") == 0)
+        {
+            refreshInterval = atoi(argv[2]);
+        }
+        // if arguments are "terminate" and "pid", terminate process with pid
+        else if (argc == 3 && strcmp(argv[1], "terminate") == 0)
+        {
+            kill(atoi(argv[2]), SIGTERM);
+            exit(0);
+        }
+        // if arguments are "kill" and "pid", kill process with pid
+        else if (argc == 3 && strcmp(argv[1], "kill") == 0)
+        {
+            kill(atoi(argv[2]), SIGKILL);
+            exit(0);
+        }
+        // if arguments are "suspend" and "pid", suspend process with pid
+        else if (argc == 3 && strcmp(argv[1], "suspend") == 0)
+        {
+            kill(atoi(argv[2]), SIGSTOP);
+            exit(0);
+        }
+        // if arguments are "resume" and "pid", resume process with pid
+        else if (argc == 3 && strcmp(argv[1], "resume") == 0)
+        {
+            kill(atoi(argv[2]), SIGCONT);
+            exit(0);
+        }
+        // if arguments are something else, print usage
+        else
+        {
+            printf("Usage: ./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]\n");
+            exit(0);
+        }
     }
 
-    return 0;
+    monitor();
 }

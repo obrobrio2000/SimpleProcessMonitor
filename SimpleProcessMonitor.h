@@ -11,24 +11,12 @@
 #define CLOCK_TICKS_PER_SECOND sysconf(_SC_CLK_TCK)
 #define PAGE_SIZE getpagesize()
 #define MINIMUM_INTERVAL 1
-#define DEFAULT_INTERVAL 5
+#define DEFAULT_INTERVAL 3
 
-// Refresh interval in seconds
-int refreshInterval = 3;
-
-// Highlighted PID
-int highlightedPID = 0;
-
-// Ctrl+C start handler
-int execute = 1;
-void trap1(int signal)
-{
-    execute = 0;
-}
-
-// Ctrl+C input handler
-void trap2(int signal)
-{
-    system("clear");
-    exit(0);
-}
+void trap1(int signal);
+void trap2(int signal);
+void inputHighlight();
+void inputInterval();
+void inputAction(int action);
+void monitor();
+void input();
