@@ -35,7 +35,7 @@ void inputHighlight()
     // print reset
     printf("\033[0m");
 
-    char pid[1000];
+    char pid[7];
     scanf("%s", pid);
 
     // iterate pid and check if it is a number or space or newline
@@ -69,7 +69,7 @@ void inputInterval()
     // print reset
     printf("\033[0m");
 
-    char interval[1000];
+    char interval[5];
     scanf("%s", interval);
 
     for (int i = 0; i < strlen(interval); i++)
@@ -115,7 +115,7 @@ void inputAction(int action)
     // print reset
     printf("\033[0m");
 
-    char pid[1000];
+    char pid[7];
     scanf("%s", pid);
 
     // iterate pid and check if it is a number or space or newline
@@ -155,463 +155,6 @@ void inputAction(int action)
     {
         kill(atoi(pid), SIGTERM);
     }
-}
-
-void monitor()
-{
-    // Ctrl+C monitor
-    signal(SIGINT, &trap1);
-
-    // execute flag used for Ctrl+C monitor handler
-    execute = 1;
-
-    while (execute)
-    {
-        // clear console
-        system("clear");
-
-        // print green
-        printf("\033[1;92m");
-
-        printf("SimpleProcessMonitor by Giovanni Magliocchetti\n\n");
-
-        // print reset
-        printf("\033[0m");
-
-        FILE *fp;
-
-        // print CPU info (manufacturer, model, speed, cores)
-        // print only once
-        printf("CPU:");
-        fp = fopen("/proc/cpuinfo", "r");
-        char line[100];
-        while (fgets(line, 100, fp) != NULL)
-        {
-            if (strstr(line, "model name") != NULL)
-            {
-                // print without "model name"
-                printf("%s", line + 12);
-                break;
-            }
-        }
-        fclose(fp);
-
-        // get total physical memory of host
-        long unsigned int total_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "MemTotal:", 9) == 0)
-                {
-                    sscanf(line, "%*s %lu", &total_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get free memory of host
-        long unsigned int free_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "MemFree:", 8) == 0)
-                {
-                    sscanf(line, "%*s %lu", &free_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get buff memory of host
-        long unsigned int buff_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "Buffers:", 8) == 0)
-                {
-                    sscanf(line, "%*s %lu", &buff_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get cache memory of host
-        long unsigned int cache_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "Cached:", 7) == 0)
-                {
-                    sscanf(line, "%*s %lu", &cache_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // Formula used by Top: free memory = total memory - used memory - buff/cache memory
-        // get used memory of host
-        long unsigned int used_memory = total_memory - free_memory - buff_memory - cache_memory;
-
-        // print memory info (total, free, used, buff/cache)
-        printf("Memory: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (buff/cache)\n", total_memory / 1024, free_memory / 1024, used_memory / 1024, (buff_memory + cache_memory) / 1024);
-
-        // get total swap memory of host
-        long unsigned int swap_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "SwapTotal:", 10) == 0)
-                {
-                    sscanf(line, "%*s %lu", &swap_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get swap free memory of host
-        long unsigned int swap_free_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "SwapFree:", 9) == 0)
-                {
-                    sscanf(line, "%*s %lu", &swap_free_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get avail memory of host
-        long unsigned int avail_memory = 0;
-        fp = fopen("/proc/meminfo", "r");
-        if (fp != NULL)
-        {
-            char line[1000];
-            while (fgets(line, sizeof(line), fp) != NULL)
-            {
-                if (strncmp(line, "MemAvailable:", 13) == 0)
-                {
-                    sscanf(line, "%*s %lu", &avail_memory);
-                    break;
-                }
-            }
-            fclose(fp);
-        }
-
-        // get used swap memory of host
-        long unsigned int used_swap_memory = swap_memory - swap_free_memory;
-
-        // print swap info (total, free, used) + available memory
-        printf("Swap: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (avail)\n\n", swap_memory / 1024, swap_free_memory / 1024, used_swap_memory / 1024, avail_memory / 1024);
-
-        // print yellow
-        printf("\033[1;93m");
-
-        printf("Press Ctrl+C once to enter command, twice to exit.\n\n");
-
-        // print hcyn
-        printf("\033[1;96m");
-
-        // print header with pid, ppid, command, cpu usage, memory usage, user, time
-        printf("PID\tPPID\tUSER\tGROUP\tPR\tNI\tSTATE\t%%CPU\t%%MEM\tTIME+\t\tVIRT/100\tRES/100\t\tSHR/100\t\tCOMMAND\n\n");
-
-        // print reset
-        printf("\033[0m");
-
-        // get maximum number of processes from /proc/sys/kernel/pid_max
-        int max_processes = 0;
-        fp = fopen("/proc/sys/kernel/pid_max", "r");
-        if (fp != NULL)
-        {
-            fscanf(fp, "%d", &max_processes);
-            fclose(fp);
-        }
-        else
-        {
-            printf("Error: Could not open /proc/sys/kernel/pid_max\n");
-            exit(1);
-        }
-
-        // array of pids (with calloc)
-        int *pids = calloc(max_processes, sizeof(int));
-
-        // get all subfolders in /proc that start with a number and store them in an array
-        DIR *dir;
-        struct dirent *ent;
-        if ((dir = opendir("/proc")) != NULL)
-        {
-            while ((ent = readdir(dir)) != NULL)
-            {
-                // checks for a number in the subfolder name
-                if (isdigit(ent->d_name[0]))
-                {
-                    // if process is running, set element at index <pid> to 1
-                    pids[atoi(ent->d_name)] = 1;
-                    // printf("%s\n", ent->d_name);
-                }
-            }
-            closedir(dir);
-        }
-        else
-        {
-            // print red
-            printf("\033[1;31m");
-
-            // print error message if /proc could not be opened
-            printf("Error: Could not open /proc! Exiting...\n");
-
-            // exit with code 1
-            exit(1);
-        }
-
-        // print all processes
-        for (int i = 0; i < max_processes; i++)
-        {
-            // check if pid should be printed (also works as a duplicate check, kinda...)
-            if (pids[i] == 1)
-            {
-                char filename[1000];
-                sprintf(filename, "/proc/%d/stat", i);
-                FILE *f = fopen(filename, "r");
-
-                int pid;
-                char command[1000];
-                char state;
-                int ppid;
-                long unsigned int utime;
-                long unsigned int stime;
-                long int priority;
-                long int nice;
-                long long unsigned int starttime;
-                long int rss;
-
-                if (f != NULL)
-                {
-                    fscanf(f, "%d %s %c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %ld %ld %*d %*d %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d %*u %*u %*u %*u %*d %*u %*u %*u %*u %*u %*u %*u %*d", &pid, command, &state, &ppid, &utime, &stime, &priority, &nice, &starttime, &rss);
-
-                    fclose(f);
-                }
-
-                // ========== COMMAND ==========
-
-                // strip command of parentheses
-                int j = 0;
-                for (int k = 0; k < strlen(command); k++)
-                {
-                    if (command[k] != '(' && command[k] != ')')
-                    {
-                        command[j] = command[k];
-                        j++;
-                    }
-                }
-                command[j] = '\0';
-
-                // ========== %CPU ==========
-
-                // get /proc/uptime
-                double uptime = 0;
-                fp = fopen("/proc/uptime", "r");
-                if (fp != NULL)
-                {
-                    fscanf(fp, "%lf", &uptime);
-                    fclose(fp);
-                }
-                // cpu usage in percent
-                double cpu_usage = (utime / CLOCK_TICKS_PER_SECOND + stime / CLOCK_TICKS_PER_SECOND) / (uptime - starttime / CLOCK_TICKS_PER_SECOND) * 100;
-
-                // ========== %MEM ==========
-
-                // rss in kB
-                long unsigned int rss_kB = rss * PAGE_SIZE / 1024;
-                // get memory usage in percent
-                double memory_usage = (double)rss_kB / (double)total_memory * 100;
-
-                // ========== TIME+ ==========
-
-                // total cpu time used by the process since it started
-                double total_cpu_time = utime + stime;
-                // total cpu time used by the process since it started in seconds
-                double total_cpu_time_sec = total_cpu_time / CLOCK_TICKS_PER_SECOND;
-
-                // total cpu time in MM:SS:ms format
-                int total_cpu_time_h = (int)total_cpu_time_sec / 3600;
-                int total_cpu_time_m = (int)(total_cpu_time_sec - total_cpu_time_h * 3600) / 60;
-                int total_cpu_time_s = (int)(total_cpu_time_sec - total_cpu_time_h * 3600 - total_cpu_time_m * 60);
-                int total_cpu_time_ms = (int)((total_cpu_time_sec - total_cpu_time_h * 3600 - total_cpu_time_m * 60 - total_cpu_time_s) * 1000);
-                char total_cpu_time_str[1000];
-                sprintf(total_cpu_time_str, "%02d:%02d:%02d", total_cpu_time_m, total_cpu_time_s, total_cpu_time_ms / 10);
-
-                // ========== USER ==========
-
-                // make "/proc/<pid>/status" string
-                char status_str[1000];
-                sprintf(status_str, "/proc/%d/status", pid);
-
-                // get UID of process
-                int uid = 0;
-                fp = fopen(status_str, "r");
-                if (fp != NULL)
-                {
-                    char line[1000];
-                    while (fgets(line, sizeof(line), fp) != NULL)
-                    {
-                        if (strncmp(line, "Uid:", 4) == 0)
-                        {
-                            sscanf(line, "%*s %d", &uid);
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                }
-
-                // get user name from UID
-                char user_name[1000];
-                sprintf(user_name, "unknown");
-                struct passwd *pw = getpwuid(uid);
-                if (pw != NULL)
-                {
-                    strcpy(user_name, pw->pw_name);
-                }
-
-                // ========== GROUP ==========
-
-                // get GID of process
-                int gid = 0;
-                fp = fopen(status_str, "r");
-                if (fp != NULL)
-                {
-                    char line[1000];
-                    while (fgets(line, sizeof(line), fp) != NULL)
-                    {
-                        if (strncmp(line, "Gid:", 4) == 0)
-                        {
-                            sscanf(line, "%*s %d", &gid);
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                }
-
-                // get group name from GID
-                char group_name[1000];
-                sprintf(group_name, "unknown");
-                struct group *gr = getgrgid(gid);
-                if (gr != NULL)
-                {
-                    strcpy(group_name, gr->gr_name);
-                }
-
-                // ========== VIRT ==========
-
-                // get VIRT
-                long unsigned int virt = 0;
-                fp = fopen(status_str, "r");
-                if (fp != NULL)
-                {
-                    char line[1000];
-                    while (fgets(line, sizeof(line), fp) != NULL)
-                    {
-                        if (strncmp(line, "VmSize:", 7) == 0)
-                        {
-                            sscanf(line, "%*s %lu", &virt);
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                }
-
-                // ========== RES ==========
-
-                // get RES
-                long unsigned int res = 0;
-                fp = fopen(status_str, "r");
-                if (fp != NULL)
-                {
-                    char line[1000];
-                    while (fgets(line, sizeof(line), fp) != NULL)
-                    {
-                        if (strncmp(line, "VmRSS:", 6) == 0)
-                        {
-                            sscanf(line, "%*s %lu", &res);
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                }
-
-                // ========== SHR ==========
-
-                // get SHR
-                long unsigned int shr = 0;
-                fp = fopen(status_str, "r");
-                if (fp != NULL)
-                {
-                    char line[1000];
-                    while (fgets(line, sizeof(line), fp) != NULL)
-                    {
-                        if (strncmp(line, "VmData:", 7) == 0)
-                        {
-                            sscanf(line, "%*s %lu", &shr);
-                            break;
-                        }
-                    }
-                    fclose(fp);
-                }
-
-                // if pid is the one to be highlighted, print it in yellow
-                if (pid == highlightedPID && highlightedPID != 0)
-                {
-                    // print yellow
-                    printf("\033[1;33m");
-                }
-
-                // print process info
-                printf("%d\t%d\t%s\t%s\t%ld\t%ld\t%d\t%.2f\t%.2f\t%s\t%ld\t\t%ld\t\t%ld\t\t%s\n", pid, ppid, user_name, group_name, priority, nice, state, cpu_usage, memory_usage, total_cpu_time_str, virt / 100, res / 100, shr / 100, command);
-
-                // print reset
-                printf("\033[0m");
-
-                // variable needed to fix bug where some processes duplicate exponentially
-                pids[i] = 0;
-            }
-        }
-
-        free(pids);
-
-        sleep(refreshInterval);
-    }
-
-    // print yellow
-    printf("\033[1;93m");
-
-    // ask for command
-    printf("\n\nEnter command: ");
-
-    input();
 }
 
 void input()
@@ -713,6 +256,468 @@ void input()
 
         input();
     }
+}
+
+void monitor()
+{
+    // Ctrl+C monitor
+    signal(SIGINT, &trap1);
+
+    // execute flag used for Ctrl+C monitor handler
+    execute = 1;
+
+    while (execute)
+    {
+        // clear console
+        system("clear");
+
+        // print green
+        printf("\033[1;92m");
+
+        printf("SimpleProcessMonitor by Giovanni Magliocchetti\n\n");
+
+        // print reset
+        printf("\033[0m");
+
+        FILE *fp;
+
+        // print CPU info (manufacturer, model, speed, cores)
+        // print only once
+        printf("CPU:");
+        fp = fopen("/proc/cpuinfo", "r");
+        char line[100];
+        while (fgets(line, 100, fp) != NULL)
+        {
+            if (strstr(line, "model name") != NULL)
+            {
+                // print without "model name"
+                printf("%s", line + 12);
+                break;
+            }
+        }
+        fclose(fp);
+
+        // get total physical memory of host
+        long unsigned int total_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "MemTotal:", 9) == 0)
+                {
+                    sscanf(line, "%*s %lu", &total_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get free memory of host
+        long unsigned int free_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "MemFree:", 8) == 0)
+                {
+                    sscanf(line, "%*s %lu", &free_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get buff memory of host
+        long unsigned int buff_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "Buffers:", 8) == 0)
+                {
+                    sscanf(line, "%*s %lu", &buff_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get cache memory of host
+        long unsigned int cache_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "Cached:", 7) == 0)
+                {
+                    sscanf(line, "%*s %lu", &cache_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // Formula used by Top: free memory = total memory - used memory - buff/cache memory
+        // get used memory of host
+        long unsigned int used_memory = total_memory - free_memory - buff_memory - cache_memory;
+
+        // print memory info (total, free, used, buff/cache)
+        printf("Memory: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (buff/cache)\n", total_memory / 1024, free_memory / 1024, used_memory / 1024, (buff_memory + cache_memory) / 1024);
+
+        // get total swap memory of host
+        long unsigned int swap_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "SwapTotal:", 10) == 0)
+                {
+                    sscanf(line, "%*s %lu", &swap_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get swap free memory of host
+        long unsigned int swap_free_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "SwapFree:", 9) == 0)
+                {
+                    sscanf(line, "%*s %lu", &swap_free_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get avail memory of host
+        long unsigned int avail_memory = 0;
+        fp = fopen("/proc/meminfo", "r");
+        if (fp != NULL)
+        {
+            char line[100];
+            while (fgets(line, sizeof(line), fp) != NULL)
+            {
+                if (strncmp(line, "MemAvailable:", 13) == 0)
+                {
+                    sscanf(line, "%*s %lu", &avail_memory);
+                    break;
+                }
+            }
+            fclose(fp);
+        }
+
+        // get used swap memory of host
+        long unsigned int used_swap_memory = swap_memory - swap_free_memory;
+
+        // print swap info (total, free, used) + available memory
+        printf("Swap: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (avail)\n\n", swap_memory / 1024, swap_free_memory / 1024, used_swap_memory / 1024, avail_memory / 1024);
+
+        // print yellow
+        printf("\033[1;93m");
+
+        printf("Press Ctrl+C once to enter command, twice to exit.\n\n");
+
+        // print hcyn
+        printf("\033[1;96m");
+
+        // print header with pid, ppid, command, cpu usage, memory usage, user, time
+        printf("PID\tPPID\tUSER\tGROUP\tPR\tNI\tSTATE\t%%CPU\t%%MEM\tTIME+\t\tVIRT\tRES\tSHR\tCOMMAND\n\n");
+
+        // print reset
+        printf("\033[0m");
+
+        // array of pids (with calloc)
+        int number_of_pids = 0;
+        int *pids = calloc(number_of_pids, sizeof(int));
+
+        // get all subfolders in /proc whose name is all digits and store them in an array
+        DIR *dir;
+        struct dirent *ent;
+        if ((dir = opendir("/proc")) != NULL)
+        {
+            while ((ent = readdir(dir)) != NULL)
+            {
+                // check if subfolder is all digits
+                int is_number = 1;
+                int i;
+                for (i = 0; i < strlen(ent->d_name); i++)
+                {
+                    if (!isdigit(ent->d_name[i]))
+                    {
+                        is_number = 0;
+                        break;
+                    }
+                }
+                if (!is_number)
+                {
+                    continue;
+                }
+                number_of_pids++;
+                pids = realloc(pids, number_of_pids * sizeof(int));
+                pids[number_of_pids - 1] = atoi(ent->d_name);
+            }
+            closedir(dir);
+        }
+        else
+        {
+            // print red
+            printf("\033[1;31m");
+
+            // print error message if /proc could not be opened
+            printf("Error: Could not open /proc! Exiting...\n");
+
+            // exit with code 1
+            exit(1);
+        }
+
+        // print all processes
+        for (int i = 0; i < number_of_pids; i++)
+        {
+            char filename[18];
+            sprintf(filename, "/proc/%d/stat", pids[i]);
+            FILE *f = fopen(filename, "r");
+
+            int pid;
+            char command[100];
+            char state;
+            int ppid;
+            long unsigned int utime;
+            long unsigned int stime;
+            long int priority;
+            long int nice;
+            long long unsigned int starttime;
+            long int rss;
+
+            if (f != NULL)
+            {
+                fscanf(f, "%d %s %c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %ld %ld %*d %*d %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d %*u %*u %*u %*u %*d %*u %*u %*u %*u %*u %*u %*u %*d", &pid, command, &state, &ppid, &utime, &stime, &priority, &nice, &starttime, &rss);
+
+                fclose(f);
+            }
+
+            // ========== COMMAND ==========
+
+            // strip command of parentheses
+            int j = 0;
+            for (int k = 0; k < strlen(command); k++)
+            {
+                if (command[k] != '(' && command[k] != ')')
+                {
+                    command[j] = command[k];
+                    j++;
+                }
+            }
+            command[j] = '\0';
+
+            // ========== %CPU ==========
+
+            // get /proc/uptime
+            double uptime = 0;
+            fp = fopen("/proc/uptime", "r");
+            if (fp != NULL)
+            {
+                fscanf(fp, "%lf", &uptime);
+                fclose(fp);
+            }
+            // cpu usage in percent
+            double cpu_usage = (utime / CLOCK_TICKS_PER_SECOND + stime / CLOCK_TICKS_PER_SECOND) / (uptime - starttime / CLOCK_TICKS_PER_SECOND) * 100;
+
+            // ========== %MEM ==========
+
+            // rss in kB
+            long unsigned int rss_kB = rss * PAGE_SIZE / 1024;
+            // get memory usage in percent
+            double memory_usage = (double)rss_kB / (double)total_memory * 100;
+
+            // ========== TIME+ ==========
+
+            // total cpu time used by the process since it started
+            double total_cpu_time = utime + stime;
+            // total cpu time used by the process since it started in seconds
+            double total_cpu_time_sec = total_cpu_time / CLOCK_TICKS_PER_SECOND;
+
+            // total cpu time in MM:SS:ms format
+            int total_cpu_time_h = (int)total_cpu_time_sec / 3600;
+            int total_cpu_time_m = (int)(total_cpu_time_sec - total_cpu_time_h * 3600) / 60;
+            int total_cpu_time_s = (int)(total_cpu_time_sec - total_cpu_time_h * 3600 - total_cpu_time_m * 60);
+            int total_cpu_time_ms = (int)((total_cpu_time_sec - total_cpu_time_h * 3600 - total_cpu_time_m * 60 - total_cpu_time_s) * 1000);
+            char total_cpu_time_str[9];
+            sprintf(total_cpu_time_str, "%02d:%02d:%02d", total_cpu_time_m, total_cpu_time_s, total_cpu_time_ms / 10);
+
+            // ========== USER ==========
+
+            // make "/proc/<pid>/status" string
+            char status_str[20];
+            sprintf(status_str, "/proc/%d/status", pid);
+
+            // get UID of process
+            int uid = 0;
+            fp = fopen(status_str, "r");
+            if (fp != NULL)
+            {
+                char line[100];
+                while (fgets(line, sizeof(line), fp) != NULL)
+                {
+                    if (strncmp(line, "Uid:", 4) == 0)
+                    {
+                        sscanf(line, "%*s %d", &uid);
+                        break;
+                    }
+                }
+                fclose(fp);
+            }
+
+            // get user name from UID
+            char user_name[100];
+            sprintf(user_name, "unknown");
+            struct passwd *pw = getpwuid(uid);
+            if (pw != NULL)
+            {
+                strcpy(user_name, pw->pw_name);
+            }
+
+            // if user name is long more than 6 characters, truncate it and add "+" at the end
+            if (strlen(user_name) > 6)
+            {
+                user_name[6] = '+';
+                user_name[7] = '\0';
+            }
+
+            // ========== GROUP ==========
+
+            // get GID of process
+            int gid = 0;
+            fp = fopen(status_str, "r");
+            if (fp != NULL)
+            {
+                char line[100];
+                while (fgets(line, sizeof(line), fp) != NULL)
+                {
+                    if (strncmp(line, "Gid:", 4) == 0)
+                    {
+                        sscanf(line, "%*s %d", &gid);
+                        break;
+                    }
+                }
+                fclose(fp);
+            }
+
+            // get group name from GID
+            char group_name[100];
+            sprintf(group_name, "unknown");
+            struct group *gr = getgrgid(gid);
+            if (gr != NULL)
+            {
+                strcpy(group_name, gr->gr_name);
+            }
+
+            // if group name is long more than 6 characters, truncate it and add "+" at the end
+            if (strlen(group_name) > 6)
+            {
+                group_name[6] = '+';
+                group_name[7] = '\0';
+            }
+
+            // ========== VIRT ==========
+
+            // get VIRT
+            long unsigned int virt = 0;
+            fp = fopen(status_str, "r");
+            if (fp != NULL)
+            {
+                char line[100];
+                while (fgets(line, sizeof(line), fp) != NULL)
+                {
+                    if (strncmp(line, "VmSize:", 7) == 0)
+                    {
+                        sscanf(line, "%*s %lu", &virt);
+                        break;
+                    }
+                }
+                fclose(fp);
+            }
+
+            // ========== RES ==========
+
+            // get RES
+            long unsigned int res = 0;
+            fp = fopen(status_str, "r");
+            if (fp != NULL)
+            {
+                char line[100];
+                while (fgets(line, sizeof(line), fp) != NULL)
+                {
+                    if (strncmp(line, "VmRSS:", 6) == 0)
+                    {
+                        sscanf(line, "%*s %lu", &res);
+                        break;
+                    }
+                }
+                fclose(fp);
+            }
+
+            // ========== SHR ==========
+
+            // get SHR
+            long unsigned int shr = 0;
+            fp = fopen(status_str, "r");
+            if (fp != NULL)
+            {
+                char line[100];
+                while (fgets(line, sizeof(line), fp) != NULL)
+                {
+                    if (strncmp(line, "VmData:", 7) == 0)
+                    {
+                        sscanf(line, "%*s %lu", &shr);
+                        break;
+                    }
+                }
+                fclose(fp);
+            }
+
+            // if pid is the one to be highlighted, print it in yellow
+            if (pid == highlightedPID && highlightedPID != 0)
+            {
+                // print yellow
+                printf("\033[1;33m");
+            }
+
+            // print process info
+            printf("%d\t%d\t%s\t%s\t%ld\t%ld\t%d\t%.2f\t%.2f\t%s\t%ld\t%ld\t%ld\t%s\n", pid, ppid, user_name, group_name, priority, nice, state, cpu_usage, memory_usage, total_cpu_time_str, virt, res, shr, command);
+
+            // print reset
+            printf("\033[0m");
+        }
+
+        free(pids);
+
+        sleep(refreshInterval);
+    }
+
+    // print yellow
+    printf("\033[1;93m");
+
+    // ask for command
+    printf("\n\nEnter command: ");
+
+    input();
 }
 
 void main(int argc, char *argv[])

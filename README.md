@@ -21,7 +21,7 @@ Outside the program (from the terminal):
 
 Inside the program:
 
-```bash
+```
 monitor | back          - Go back to monitoring processes
 terminate               - Terminate process with pid
 kill                    - Kill process with pid

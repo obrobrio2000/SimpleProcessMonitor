@@ -18,5 +18,5 @@ void trap2(int signal);
 void inputHighlight();
 void inputInterval();
 void inputAction(int action);
-void monitor();
 void input();
+void monitor();
