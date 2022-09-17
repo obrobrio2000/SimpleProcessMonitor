@@ -1,15 +1,15 @@
-==4655== Memcheck, a memory error detector
-==4655== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
-==4655== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
-==4655== Command: ./SimpleProcessMonitor
-==4655== Parent PID: 426
-==4655== 
-==4655== 
-==4655== HEAP SUMMARY:
-==4655==     in use at exit: 0 bytes in 0 blocks
-==4655==   total heap usage: 2,372 allocs, 2,372 frees, 2,552,137 bytes allocated
-==4655== 
-==4655== All heap blocks were freed -- no leaks are possible
-==4655== 
-==4655== For lists of detected and suppressed errors, rerun with: -s
-==4655== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+==1976== Memcheck, a memory error detector
+==1976== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==1976== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==1976== Command: ./SimpleProcessMonitor
+==1976== Parent PID: 465
+==1976== 
+==1976== 
+==1976== HEAP SUMMARY:
+==1976==     in use at exit: 0 bytes in 0 blocks
+==1976==   total heap usage: 1,613 allocs, 1,613 frees, 1,962,001 bytes allocated
+==1976== 
+==1976== All heap blocks were freed -- no leaks are possible
+==1976== 
+==1976== For lists of detected and suppressed errors, rerun with: -s
+==1976== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

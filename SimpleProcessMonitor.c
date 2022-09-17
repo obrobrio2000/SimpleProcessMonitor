@@ -5,6 +5,25 @@
 
 #include "SimpleProcessMonitor.h"
 
+// struct of the process (PID, PPID, USER, GROUP, PR, NI, state, %CPU, %MEM, TIME+, VIRT, RES, SHR, COMMAND)
+struct process
+{
+    int pid;
+    int ppid;
+    char user[10];
+    char group[10];
+    long int pr;
+    long int ni;
+    char state;
+    float cpu;
+    float mem;
+    char time[10];
+    long int virt;
+    long int res;
+    long int shr;
+    char command[100];
+};
+
 // Refresh interval in seconds
 int refreshInterval = DEFAULT_INTERVAL;
 
@@ -23,6 +42,38 @@ void trap2(int signal)
 {
     system("clear");
     exit(0);
+}
+
+// sort the processes by pid, cpu or mem
+int sort_by = 1; // 0 = PID, 1 = CPU, 2 = MEM
+
+// compare function for qsort based on the sort_by variable
+int compare(const void *a, const void *b)
+{
+    struct process *ia = (struct process *)a;
+    struct process *ib = (struct process *)b;
+    if (sort_by == 1)
+    {
+        if (ia->cpu < ib->cpu)
+            return 1;
+        else if (ia->cpu > ib->cpu)
+            return -1;
+        else
+            return 0;
+    }
+    else if (sort_by == 2)
+    {
+        if (ia->mem < ib->mem)
+            return 1;
+        else if (ia->mem > ib->mem)
+            return -1;
+        else
+            return 0;
+    }
+    else
+    {
+        return 0;
+    }
 }
 
 void inputHighlight()
@@ -102,6 +153,45 @@ void inputInterval()
     else
     {
         refreshInterval = atoi(interval);
+    }
+}
+
+void inputSort()
+{
+    // print yellow
+    printf("\033[1;93m");
+
+    printf("\nSort by: ");
+
+    // print reset
+    printf("\033[0m");
+
+    char sort[5];
+    scanf("%s", sort);
+
+    if (strcmp(sort, "pid") == 0)
+    {
+        sort_by = 0;
+    }
+    else if (strcmp(sort, "cpu") == 0)
+    {
+        sort_by = 1;
+    }
+    else if (strcmp(sort, "mem") == 0)
+    {
+        sort_by = 2;
+    }
+    else
+    {
+        // print red
+        printf("\033[1;91m");
+
+        printf("\nError: invalid sort!\n");
+
+        // print reset
+        printf("\033[0m");
+
+        inputSort();
     }
 }
 
@@ -224,6 +314,12 @@ void input()
     else if (strcmp(command, "unhighlight") == 0)
     {
         highlightedPID = 0;
+        monitor();
+    }
+    // if user writes "sort", sort processes
+    else if (strcmp(command, "sort") == 0)
+    {
+        inputSort();
         monitor();
     }
     // if user writes newline or space or ^C
@@ -370,7 +466,7 @@ void monitor()
         long unsigned int used_memory = total_memory - free_memory - buff_memory - cache_memory;
 
         // print memory info (total, free, used, buff/cache)
-        printf("Memory: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (buff/cache)\n", total_memory / 1024, free_memory / 1024, used_memory / 1024, (buff_memory + cache_memory) / 1024);
+        printf("Memory: %lu MB total | %lu MB free | %lu MB used | %lu MB buff/cache\n", total_memory / 1024, free_memory / 1024, used_memory / 1024, (buff_memory + cache_memory) / 1024);
 
         // get total swap memory of host
         long unsigned int swap_memory = 0;
@@ -427,7 +523,7 @@ void monitor()
         long unsigned int used_swap_memory = swap_memory - swap_free_memory;
 
         // print swap info (total, free, used) + available memory
-        printf("Swap: %lu MB (total) / %lu MB (free) / %lu MB (used) / %lu MB (avail)\n\n", swap_memory / 1024, swap_free_memory / 1024, used_swap_memory / 1024, avail_memory / 1024);
+        printf("Swap: %lu MB total | %lu MB free | %lu MB used | %lu MB avail\n\n", swap_memory / 1024, swap_free_memory / 1024, used_swap_memory / 1024, avail_memory / 1024);
 
         // print yellow
         printf("\033[1;93m");
@@ -438,14 +534,14 @@ void monitor()
         printf("\033[1;96m");
 
         // print header with pid, ppid, command, cpu usage, memory usage, user, time
-        printf("PID\tPPID\tUSER\tGROUP\tPR\tNI\tSTATE\t%%CPU\t%%MEM\tTIME+\t\tVIRT\tRES\tSHR\tCOMMAND\n\n");
+        printf("PID\tPPID\tUSER/GROUP\tPR\tNI\tSTATE\t%%CPU\t%%MEM\tTIME+\t\tVIRT\tRES\tSHR\tCOMMAND\n\n");
 
         // print reset
         printf("\033[0m");
 
-        // array of pids (with calloc)
-        int number_of_pids = 0;
-        int *pids = calloc(number_of_pids, sizeof(int));
+        // array of pids (with calloc) with sizeof struct "process"
+        int num_pids = 0;
+        struct process *pids = calloc(num_pids, sizeof(struct process));
 
         // get all subfolders in /proc whose name is all digits and store them in an array
         DIR *dir;
@@ -469,9 +565,9 @@ void monitor()
                 {
                     continue;
                 }
-                number_of_pids++;
-                pids = realloc(pids, number_of_pids * sizeof(int));
-                pids[number_of_pids - 1] = atoi(ent->d_name);
+                num_pids++;
+                pids = realloc(pids, num_pids * sizeof(struct process));
+                pids[num_pids - 1].pid = atoi(ent->d_name);
             }
             closedir(dir);
         }
@@ -487,27 +583,22 @@ void monitor()
             exit(1);
         }
 
-        // print all processes
-        for (int i = 0; i < number_of_pids; i++)
+        // store processes data in array of structs
+        for (int i = 0; i < num_pids; i++)
         {
             char filename[18];
-            sprintf(filename, "/proc/%d/stat", pids[i]);
+            sprintf(filename, "/proc/%d/stat", pids[i].pid);
             FILE *f = fopen(filename, "r");
 
-            int pid;
             char command[100];
-            char state;
-            int ppid;
             long unsigned int utime;
             long unsigned int stime;
-            long int priority;
-            long int nice;
             long long unsigned int starttime;
             long int rss;
 
             if (f != NULL)
             {
-                fscanf(f, "%d %s %c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %ld %ld %*d %*d %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d %*u %*u %*u %*u %*d %*u %*u %*u %*u %*u %*u %*u %*d", &pid, command, &state, &ppid, &utime, &stime, &priority, &nice, &starttime, &rss);
+                fscanf(f, "%*d %s %c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %*d %*d %ld %ld %*d %*d %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d %*u %*u %*u %*u %*d %*u %*u %*u %*u %*u %*u %*u %*d", command, &pids[i].state, &pids[i].ppid, &utime, &stime, &pids[i].pr, &pids[i].ni, &starttime, &rss);
 
                 fclose(f);
             }
@@ -526,6 +617,9 @@ void monitor()
             }
             command[j] = '\0';
 
+            // set process struct command
+            strcpy(pids[i].command, command);
+
             // ========== %CPU ==========
 
             // get /proc/uptime
@@ -539,12 +633,18 @@ void monitor()
             // cpu usage in percent
             double cpu_usage = (utime / CLOCK_TICKS_PER_SECOND + stime / CLOCK_TICKS_PER_SECOND) / (uptime - starttime / CLOCK_TICKS_PER_SECOND) * 100;
 
+            // set process struct cpu
+            pids[i].cpu = cpu_usage;
+
             // ========== %MEM ==========
 
             // rss in kB
             long unsigned int rss_kB = rss * PAGE_SIZE / 1024;
             // get memory usage in percent
             double memory_usage = (double)rss_kB / (double)total_memory * 100;
+
+            // set process struct memory
+            pids[i].mem = memory_usage;
 
             // ========== TIME+ ==========
 
@@ -561,11 +661,14 @@ void monitor()
             char total_cpu_time_str[9];
             sprintf(total_cpu_time_str, "%02d:%02d:%02d", total_cpu_time_m, total_cpu_time_s, total_cpu_time_ms / 10);
 
+            // set process struct time
+            strcpy(pids[i].time, total_cpu_time_str);
+
             // ========== USER ==========
 
             // make "/proc/<pid>/status" string
             char status_str[20];
-            sprintf(status_str, "/proc/%d/status", pid);
+            sprintf(status_str, "/proc/%d/status", pids[i].pid);
 
             // get UID of process
             int uid = 0;
@@ -599,6 +702,9 @@ void monitor()
                 user_name[6] = '+';
                 user_name[7] = '\0';
             }
+
+            // set process struct user
+            strcpy(pids[i].user, user_name);
 
             // ========== GROUP ==========
 
@@ -635,6 +741,9 @@ void monitor()
                 group_name[7] = '\0';
             }
 
+            // set process struct group
+            strcpy(pids[i].group, group_name);
+
             // ========== VIRT ==========
 
             // get VIRT
@@ -653,6 +762,9 @@ void monitor()
                 }
                 fclose(fp);
             }
+
+            // set process struct virt
+            pids[i].virt = virt;
 
             // ========== RES ==========
 
@@ -673,6 +785,9 @@ void monitor()
                 fclose(fp);
             }
 
+            // set process struct res
+            pids[i].res = res;
+
             // ========== SHR ==========
 
             // get SHR
@@ -692,15 +807,28 @@ void monitor()
                 fclose(fp);
             }
 
+            // set process struct shr
+            pids[i].shr = shr;
+        }
+
+        // sort pids array by value of global variable "sort_by"
+        if (sort_by == 1 || sort_by == 2)
+        {
+            qsort(pids, num_pids, sizeof(struct process), compare);
+        }
+
+        // print all processes
+        for (int i = 0; i < num_pids; i++)
+        {
             // if pid is the one to be highlighted, print it in yellow
-            if (pid == highlightedPID && highlightedPID != 0)
+            if (pids[i].pid == highlightedPID && highlightedPID != 0)
             {
                 // print yellow
                 printf("\033[1;33m");
             }
 
             // print process info
-            printf("%d\t%d\t%s\t%s\t%ld\t%ld\t%d\t%.2f\t%.2f\t%s\t%ld\t%ld\t%ld\t%s\n", pid, ppid, user_name, group_name, priority, nice, state, cpu_usage, memory_usage, total_cpu_time_str, virt, res, shr, command);
+            printf("%d\t%d\t%s/%s\t%ld\t%ld\t%c\t%.2f\t%.2f\t%s\t%ld\t%ld\t%ld\t%s\n", pids[i].pid, pids[i].ppid, pids[i].user, pids[i].group, pids[i].pr, pids[i].ni, pids[i].state, pids[i].cpu, pids[i].mem, pids[i].time, pids[i].virt, pids[i].res, pids[i].shr, pids[i].command);
 
             // print reset
             printf("\033[0m");
@@ -754,10 +882,31 @@ void main(int argc, char *argv[])
             kill(atoi(argv[2]), SIGCONT);
             exit(0);
         }
+        // if arguments are "sort" and "choice", sort processes by choice
+        else if (argc == 3 && strcmp(argv[1], "sort") == 0)
+        {
+            if (strcmp(argv[2], "pid") == 0)
+            {
+                sort_by = 0;
+            }
+            else if (strcmp(argv[2], "cpu") == 0)
+            {
+                sort_by = 1;
+            }
+            else if (strcmp(argv[2], "mem") == 0)
+            {
+                sort_by = 2;
+            }
+            else
+            {
+                printf("Invalid sort choice. Valid choices are: pid, cpu, mem\n");
+                exit(0);
+            }
+        }
         // if arguments are something else, print usage
         else
         {
-            printf("Usage: ./SimpleProcessMonitor [interval <time>] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>]\n");
+            printf("Usage: ./SimpleProcessMonitor [help] [terminate <pid>] [kill <pid>] [suspend <pid>] [resume <pid>] [interval <time_ss>] [sort <cpu|mem|pid>]\n");
             exit(0);
         }
     }

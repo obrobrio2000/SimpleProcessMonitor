@@ -15,8 +15,10 @@
 
 void trap1(int signal);
 void trap2(int signal);
+int compare(const void *a, const void *b);
 void inputHighlight();
 void inputInterval();
+void inputSort();
 void inputAction(int action);
 void input();
 void monitor();
